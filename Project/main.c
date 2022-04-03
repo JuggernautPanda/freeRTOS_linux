@@ -68,6 +68,7 @@ Program should follows below rules:
 #include "task.h"			/* Task */
 #include "timers.h"
 #include "queue.h"
+#include "semphr.h" // include semaphore!
 
 #pragma pack(1)
 struct stateAndBalance
@@ -92,6 +93,9 @@ void vFirstTask(void* parameter);
 void vSecondTask(void* parameter);
 void vThirdTask(void* parameter);
 
+
+static SemaphoreHandle_t bin_sem;
+static SemaphoreHandle_t mutex;
 /* --------------------------------------------- */
 /*             Main application                  */
 /* --------------------------------------------- */
@@ -103,12 +107,21 @@ int main ( void )
 	//Some initializations
 	sab.balance = 0 ; 
 	sab.state = unlock;
+	
+	//Initialize a semaphore before starting tasks
+	
+	//bin_sem = xSemaphoreCreateBinary();
+	
+	 // Create mutex before starting tasks
+  mutex = xSemaphoreCreateMutex();
+
 
 	//Step a: Rule 3 - There are three asynchronous task working in parallel. 
 	//They are of equal priority
 	xTaskCreate( vFirstTask, "Task 1", 1024, NULL, 1, NULL );
 	xTaskCreate( vSecondTask,"Task 2", 1024, NULL, 1, NULL);
 	xTaskCreate( vThirdTask, "Task 3", 1024, NULL, 1, NULL );
+	//xSemaphoreTake(bin_sem, 10);
 
 	// start the scheduler
 	vTaskStartScheduler();
@@ -125,6 +138,9 @@ void vFirstTask(void* parameter)
 	while(1)
 	{
 		printf("Task 1\n");
+		
+  // Release the binary semaphore
+  //xSemaphoreGive(bin_sem);
 	if(sab.state == unlock)
 	{
 	printf("Current Balance = %d\n", sab.balance);
@@ -143,13 +159,16 @@ void vSecondTask(void* parameter)
 	while(1)
 	{
 	printf("Task 2 - sub 500\n");
+	   
 	if(sab.balance >= 500 && sab.state == unlock)
 	{
     printf("Current Balance = %d\n", sab.balance);
 	sab.balance =  sab.balance - 500;
 	printf("New Balance = %d\n", sab.balance);
 	}
-	
+	//xSemaphoreGive(mutex);
+
+    
 	vTaskDelay(pdMS_TO_TICKS(5000)); // The second task should run every 5 seconds
 	}
 }
@@ -161,12 +180,17 @@ void vThirdTask(void* parameter)
 {
 	while(1)
 	{
+		if (xSemaphoreTake(mutex, 0) == pdTRUE) 
+	   {
 	 vTaskDelay(pdMS_TO_TICKS(30000)); // The third task should run every 30 seconds
 	 printf("Task 3 - locked\n");
 	 sab.state = lock;
 	 vTaskDelay(pdMS_TO_TICKS(10000)); // Keep it locked for 10 seconds.
      sab.state = unlock; // Now unlock it
 	 printf("Task 3 - unlocked\n");
+	 // Give mutex after critical section
+      xSemaphoreGive(mutex);
+    }
 	}
 }
 
