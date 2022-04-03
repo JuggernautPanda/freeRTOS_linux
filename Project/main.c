@@ -180,10 +180,11 @@ void vThirdTask(void* parameter)
 {
 	while(1)
 	{
+		vTaskDelay(pdMS_TO_TICKS(30000)); // The third task should run every 30 seconds
+	 printf("Task 3 - locked\n");
 		if (xSemaphoreTake(mutex, 0) == pdTRUE) 
 	   {
-	 vTaskDelay(pdMS_TO_TICKS(30000)); // The third task should run every 30 seconds
-	 printf("Task 3 - locked\n");
+		   //locking is the critical section
 	 sab.state = lock;
 	 vTaskDelay(pdMS_TO_TICKS(10000)); // Keep it locked for 10 seconds.
      sab.state = unlock; // Now unlock it
